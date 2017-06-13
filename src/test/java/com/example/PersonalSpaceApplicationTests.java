@@ -1,17 +1,27 @@
 package com.example;
 
+import static org.hamcrest.CoreMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
+import com.example.firebase.Message;
 import com.example.firebase.MessagingService;
+import com.example.personalspace.User;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -21,12 +31,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = { MockServletContext.class, MockServerConfiguration.class })
+@ActiveProfiles("unit")
 @WebAppConfiguration
 public class PersonalSpaceApplicationTests {
 
@@ -44,6 +56,7 @@ public class PersonalSpaceApplicationTests {
     @Before
     public void setUp() {
         mockMvc = standaloneSetup(controller).build();
+        reset(messagingService);
     }
 
     @After
@@ -60,6 +73,7 @@ public class PersonalSpaceApplicationTests {
     public void contextLoads() {
         assertNotNull(messagingService);
         assertNotNull(controller);
+
     }
 
     @Test
@@ -254,6 +268,170 @@ public class PersonalSpaceApplicationTests {
         assertEquals(1, controller.getSession()
                 .getActiveUsers()
                 .size());
+    }
+
+    @Test
+    public void testRemoveUser() throws Exception {
+        // add a user first
+        testAddUserToSession();
+
+        // assert that the user is there
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+
+        // get the user name
+        Map<String, User> users = controller.getSession()
+                .getActiveUsers();
+        String[] names = users.keySet()
+                .toArray(new String[users.size()]);
+
+        assertEquals(1, names.length);
+        String username = URLEncoder.encode(names[0], "utf-8");
+
+        // remove the user now
+        mockMvc.perform(delete("/sessions/users/" + username))
+                .andExpect(status().isOk());
+
+        assertEquals(0, controller.getSession()
+                .getActiveUsers()
+                .size());
+    }
+
+    @Test
+    public void testUpdatePrefs() throws Exception {
+        // add a user first
+        testAddUserToSession();
+
+        // assert that the user is there
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+
+        // update the pref for the user
+        JSONObject request = new JSONObject();
+        JSONObject pref = new JSONObject();
+        pref.put("distance", 10.5);
+
+        request.put("pref", pref);
+
+        // get the user name
+        Map<String, User> users = controller.getSession()
+                .getActiveUsers();
+        String[] names = users.keySet()
+                .toArray(new String[users.size()]);
+
+        assertEquals(1, names.length);
+        String username = URLEncoder.encode(names[0], "utf-8");
+
+        mockMvc.perform(put("/sessions/users/" + username).contentType(MediaType.APPLICATION_JSON)
+                .content(request.toString()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void testGetAllCustomers() throws Exception {
+        // add a user first
+        testAddUserToSession();
+
+        // assert that the user is there
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+
+        Map<String, User> users = controller.getSession()
+                .getActiveUsers();
+        String[] names = users.keySet()
+                .toArray(new String[users.size()]);
+        assertEquals(1, names.length);
+
+        JSONArray expectedBody = new JSONArray();
+        expectedBody.put(names[0]);
+
+        // get the list of users
+        mockMvc.perform(get("/sessions/users").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedBody.toString()));
+    }
+
+    @Test
+    public void testNotifyUser() throws Exception {
+        // create the session and the user
+        testAddUserToSession();
+
+        // assert that the user is there
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+
+        Map<String, User> users = controller.getSession()
+                .getActiveUsers();
+        String[] names = users.keySet()
+                .toArray(new String[users.size()]);
+        assertEquals(1, names.length);
+        String username = URLEncoder.encode(names[0], "utf-8");
+
+        // make the request
+        JSONObject req = new JSONObject();
+        req.put("passkey", config.getSessionPass());
+        JSONObject message = new JSONObject();
+        message.put("test", "test");
+        req.put("message", message);
+
+        mockMvc.perform(post(("/sessions/users/" + username + "/notify")).contentType(MediaType.APPLICATION_JSON)
+                .content(req.toString()))
+                .andExpect(status().isOk());
+
+        // assert that send message was called
+        verify(messagingService, times(1)).sendMessage(any());
+    }
+
+    @Test
+    public void testNotifyUserWithoutSession() throws Exception {
+        // make the request
+        JSONObject req = new JSONObject();
+        req.put("passkey", config.getSessionPass());
+        JSONObject message = new JSONObject();
+        message.put("test", "test");
+        req.put("message", message);
+
+        mockMvc.perform(post(("/sessions/users/123/notify")).contentType(MediaType.APPLICATION_JSON)
+                .content(req.toString()))
+                .andExpect(status().isUnauthorized());
+
+        verify(messagingService, times(0)).sendMessage(any());
+    }
+
+    @Test
+    public void testNotifyUserWithPasskeyMismatch() throws Exception {
+        // create the session and the user
+        testAddUserToSession();
+
+        // assert that the user is there
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+
+        Map<String, User> users = controller.getSession()
+                .getActiveUsers();
+        String[] names = users.keySet()
+                .toArray(new String[users.size()]);
+        assertEquals(1, names.length);
+        String username = URLEncoder.encode(names[0], "utf-8");
+
+        // make the request
+        JSONObject req = new JSONObject();
+        req.put("passkey", "wrong key");
+        JSONObject message = new JSONObject();
+        message.put("test", "test");
+        req.put("message", message);
+
+        mockMvc.perform(post(("/sessions/users/" + username + "/notify")).contentType(MediaType.APPLICATION_JSON)
+                .content(req.toString()))
+                .andExpect(status().isUnauthorized());
+
+        // assert that send message was called
+        verify(messagingService, times(0)).sendMessage(any());
     }
 
 }

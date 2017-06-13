@@ -8,6 +8,7 @@ import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 public class MockServerConfiguration {
     
     @Bean
+    @Profile("unit")
     public RestTemplate getMockRestTemplate() {
         RestTemplate template = new RestTemplate();
 
@@ -35,6 +37,7 @@ public class MockServerConfiguration {
     }
     
     @Bean
+    @Profile("unit")
     public MessagingService messagingService(){
         return Mockito.mock(MessagingService.class);
     }

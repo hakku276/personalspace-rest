@@ -104,13 +104,6 @@ public class FirebaseMessagingService extends HttpMessagingService {
     }
 
     @Override
-    public void sendMessage(String messageType, String customerId, String token, JSONObject message,
-            JSONArray buildInstruction) throws JSONException {
-        // TODO may be implement later on
-        throw new RuntimeException("Invalid Access, Not Implemented Yet");
-    }
-
-    @Override
     public boolean hasError(ClientHttpResponse response) throws IOException {
         return false;
     }

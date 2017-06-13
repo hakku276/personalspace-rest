@@ -1,5 +1,6 @@
 package com.example.personalspace;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,10 +13,11 @@ public class User {
      * The name of the user
      */
     private String name;
-    
+
     /**
      * The push token related to the device
      */
+    @JsonIgnore
     private String pushToken;
 
     /**
@@ -31,7 +33,7 @@ public class User {
         name = (String) map.get("name");
         pushToken = (String) map.get("pushToken");
         pref = new Preference();
-        if(map.get("pref") instanceof Map<?, ?>){
+        if (map.get("pref") instanceof Map<?, ?>) {
             pref.fromMap((Map<String, Object>) map.get("pref"));
         }
     }

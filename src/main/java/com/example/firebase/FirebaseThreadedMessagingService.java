@@ -19,11 +19,6 @@ import org.springframework.web.client.RestTemplate;
 public class FirebaseThreadedMessagingService extends Thread implements MessagingService, FirebaseResponseHandler {
 
     /**
-     * The time to live for the notification
-     */
-    private static final long NOTIFICATION_TTL = 2419200;
-
-    /**
      * The delay generator that is used to create random delay
      */
     private Random delayGenerator;
@@ -78,7 +73,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
                     break;
                 } else {
                     if (message instanceof FirebaseMessage) {
-                        messagingService.sendMessage(buildMessage((FirebaseMessage) message));
+                        messagingService.sendMessage(message);
                     } else {
                         logger.error("Trying to send a non firebase message to a firebase server");
                     }
@@ -97,47 +92,8 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
     public void sendMessage(Message message) {
         if (!messageQueue.offer(message)) {
             logger.error("The message could not be send because the queue was full");
-            try {
-                logger.error(message.convertToRequestBody());
-            } catch (JSONException e) {
-                logger.error("Could not convert the message into Readable String");
-                logger.error(Arrays.toString(e.getStackTrace()));
-            }
+            logger.error(message.generateRequest());
         }
-    }
-
-    public void sendMessage(String messageType, String customerId, String token, JSONObject message,
-            JSONArray buildInstruction) throws JSONException {
-
-        // checking for required values
-        if (customerId == null ||
-                customerId.isEmpty() ||
-                token == null ||
-                token.isEmpty() ||
-                message == null ||
-                messageType == null ||
-                messageType.isEmpty()) {
-            logger.error("Invalid Details obtained for sending a message, skipping message");
-            return;
-        }
-        // check if the data still has the message type body
-        if (message.has(Message.MESSAGE_TYPE)) {
-            message.remove(Message.MESSAGE_TYPE);
-        }
-        // check if the data still has the build instruction
-        if (message.has(Message.REQUEST_BUILD_INSTRUCTION)) {
-            message.remove(Message.REQUEST_BUILD_INSTRUCTION);
-        }
-
-        // creating the firebase message object
-        FirebaseMessage fmsg = new FirebaseMessage(customerId, messageType, token);
-        fmsg.setExpansionInstruction(buildInstruction);
-
-        logger.info("Pushing notification to: " + customerId);
-
-        fmsg.withTimeToLive(NOTIFICATION_TTL);
-        fmsg.withData(message);
-        sendMessage(fmsg);
     }
 
     /**
@@ -146,7 +102,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
      */
     public void sendStopMessage() {
         // A default stop type message
-        FirebaseMessage stopMessage = new FirebaseMessage("stop", "unknown", "stop");
+        FirebaseMessage stopMessage = new FirebaseMessage("STOP", null, "STOP");
         if (!messageQueue.offer(stopMessage)) {
             logger.error("The stop message could not be sent");
         }
@@ -160,11 +116,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
         if (status == HttpStatus.BAD_REQUEST) {
             // the request json was malformed
             logger.error("The JSON message was ill-formed");
-            try {
-                logger.error("Request: " + message.convertToRequestBody());
-            } catch (JSONException e) {
-                logger.error("Could not convert the message into Readable String", e);
-            }
+            logger.error("Request: " + message.generateRequest());
             return;
         } else if (status == HttpStatus.UNAUTHORIZED) {
             logger.error("Server Key was incorrect.");
@@ -173,24 +125,15 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
 
         String[] registrationIds = message.getRecipientTokens();
         if (registrationIds == null) {
-            logger.error("The registration ids were null for customer: " + message.getCustomerId());
-            try {
-                logger.error("With message: " + message.convertToRequestBody());
-            } catch (JSONException e) {
-                logger.error("Could not convert the message into Readable String", e);
-            }
+            logger.error("The registration ids were null for customer: " + message.getUsername());
+            logger.error("With message: " + message.generateRequest());
             return;
         }
 
         if (registrationIds.length != results.length()) {
             // The mismatch between the request and the response
             logger.error("Mismatched request and response");
-            try {
-                logger.error("Request: " + message.convertToRequestBody());
-            } catch (JSONException e) {
-                logger.error("Could not convert the message into Readable String");
-                logger.error(Arrays.toString(e.getStackTrace()));
-            }
+            logger.error("Request: " + message.generateRequest());
             logger.error("Response: " + results.toString());
             return;
         }
@@ -205,19 +148,16 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
                     if (status == HttpStatus.OK) {
                         if (error.equals("MissingRegistration")) {
                             logger.error("The request was missing registration id");
-                            logger.error(message.convertToRequestBody());
+                            logger.error(message.generateRequest());
                         } else if (error.equals("InvalidRegistration")) {
                             // the registration id sent was invalid, may be due
                             // to
                             // added characters
                             logger.error("The registration token was invalid:");
                             logger.error(
-                                    "Customer ID: " +
-                                            message.getCustomerId() +
-                                            " Message: " +
-                                            message.convertToRequestBody());
+                                    "Customer ID: " + message.getUsername() + " Message: " + message.generateRequest());
                             logger.error("Removed the token from the database");
-                            removeToken(message.getCustomerId(), registrationIds[i]);
+                            removeToken(message.getUsername(), registrationIds[i]);
                         } else if (error.equals("NotRegistered")) {
                             // existing token is invalid due to
                             // 1. app unregistered with fcm
@@ -227,23 +167,23 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
                             // configured
                             // to receive messages
                             // remove the token from the database
-                            removeToken(message.getCustomerId(), registrationIds[i]);
+                            removeToken(message.getUsername(), registrationIds[i]);
                         } else if (error.equals("InvalidPackageName")) {
                             // the package name was invalid
                             logger.error("The package name was found to be invalid");
-                            logger.error(message.convertToRequestBody());
+                            logger.error(message.generateRequest());
                         } else if (error.equals("MismatchSenderId")) {
                             // the sender id was invalid to send messages
                             logger.error("The Sender Id was invalid");
-                            logger.error(message.convertToRequestBody());
+                            logger.error(message.generateRequest());
                         } else if (error.equals("MessageTooBig")) {
                             logger.error("Message Body found to be too big");
                         } else if (error.equals("InvalidTtl")) {
                             logger.error("TTL was invalid");
-                            logger.error(message.convertToRequestBody());
+                            logger.error(message.generateRequest());
                         } else if (error.equals("InvalidDataKey")) {
                             logger.error("The message contains invalid keys");
-                            logger.error(message.convertToRequestBody());
+                            logger.error(message.generateRequest());
                         } else if (error.equals("DeviceMessageRateExceeded")) {
                             // the device message rate has been exceeded
                         } else if (error.equals("TopicsMessageRateExceeded")) {
@@ -267,11 +207,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
                 } else if (result.has("registration_id")) {
                     // the message sent was successful but need to update the
                     // key
-                    replaceToken(
-                            message.getCustomerId(),
-                            message.getAgent(),
-                            result.getString("registration_id"),
-                            registrationIds[i]);
+                    replaceToken(message.getUsername(), result.getString("registration_id"), registrationIds[i]);
                 }
             }
         } catch (JSONException e) {
@@ -290,7 +226,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
      *            the token to be removed
      */
     private void removeToken(String customerId, String token) {
-        //TODO remove the token
+        // TODO remove the token
     }
 
     /**
@@ -305,41 +241,7 @@ public class FirebaseThreadedMessagingService extends Thread implements Messagin
      * @param tokenToReplace
      *            the actual token returned by the fcm server
      */
-    private void replaceToken(String customerId, UserAgent agent, String token, String tokenToReplace) {
-        //TODO replace the token
-    }
-
-    /**
-     * Build the message if required using the provided build instruction
-     * 
-     * @param message
-     *            the message to be built
-     * @return the build message
-     * @throws JSONException
-     * @throws DatabaseException
-     */
-    private FirebaseMessage buildMessage(FirebaseMessage message) throws JSONException {
-        if (message.getExpansionInstruction() != null) {
-            // TODO later most probably convert the whole notification into
-            // string and start replacing it
-            String body = message.getData()
-                    .toString();
-            if (body != null) {
-                // need to actually build it
-                for (int i = 0; i < message.getExpansionInstruction()
-                        .length(); i++) {
-                    String replaceValue = "Unknown";
-                    JSONObject instruction = message.getExpansionInstruction()
-                            .getJSONObject(i);
-                    if (instruction.has("value")) {
-                        replaceValue = instruction.getString("value");
-                    }
-                    // replace the values
-                    body = body.replace("${" + i + "}", replaceValue);
-                }
-                message.withData(new JSONObject(body));
-            }
-        }
-        return message;
+    private void replaceToken(String customerId, String token, String tokenToReplace) {
+        // TODO replace the token
     }
 }
