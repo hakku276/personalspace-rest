@@ -3,24 +3,34 @@ package com.example;
 import com.example.firebase.FirebaseThreadedMessagingService;
 import com.example.firebase.MessagingService;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@PropertySource("classpath:config.properties")
 public class ServerConfiguration {
 
-    @Value("${app.session.passphrase}")
+    private static final String SESSION_KEY = "app.session.passphrase";
+
+    private static final String FCM_SERVER_KEY = "app.firebase.serverkey";
+
     @Getter
     private String sessionPass;
 
-    @Value("${app.firebase.serverkey}")
+    @Getter
     private String serverKey;
+
+    @Autowired
+    public ServerConfiguration(Environment env) {
+        sessionPass = env.getProperty(SESSION_KEY);
+        serverKey = env.getProperty(FCM_SERVER_KEY);
+        if (sessionPass == null || serverKey == null) {
+            throw new IllegalStateException("No Configuration found");
+        }
+    }
 
     @Bean
     @Profile("prod")
@@ -34,10 +44,5 @@ public class ServerConfiguration {
         FirebaseThreadedMessagingService service = new FirebaseThreadedMessagingService(serverKey, restTemplate);
         service.start();
         return service;
-    }
-
-    @Bean
-    static PropertySourcesPlaceholderConfigurer propertyPlaceHolderConfigurer() {
-        return new PropertySourcesPlaceholderConfigurer();
     }
 }

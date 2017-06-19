@@ -13,9 +13,9 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@ComponentScan(basePackageClasses = {PersonalSpaceApplication.class})
+@ComponentScan(basePackageClasses = { PersonalSpaceApplication.class })
 public class MockServerConfiguration {
-    
+
     @Bean
     @Profile("unit")
     public RestTemplate getMockRestTemplate() {
@@ -35,10 +35,10 @@ public class MockServerConfiguration {
 
         return template;
     }
-    
+
     @Bean
     @Profile("unit")
-    public MessagingService messagingService(){
+    public MessagingService messagingService() {
         return Mockito.mock(MessagingService.class);
     }
 }

@@ -38,6 +38,12 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebAppConfiguration
 public class PersonalSpaceApplicationTests {
 
+    static {
+        System.out.println("Setting KEYS");
+        System.setProperty("app.firebase.serverkey", "foo");
+        System.setProperty("app.session.passphrase", "foo");
+    }
+
     @Autowired
     private PersonalSpaceApplication controller;
 
