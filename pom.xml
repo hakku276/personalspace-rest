@@ -6,7 +6,6 @@
  <groupId>com.example</groupId>
  <artifactId>personalspace</artifactId>
  <version>0.0.1-SNAPSHOT</version>
- <packaging>war</packaging>
 
  <name>PersonalSpace</name>
  <description>REST Service for personal space</description>
