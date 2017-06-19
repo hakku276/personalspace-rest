@@ -9,7 +9,6 @@ import com.google.gson.Gson;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import org.apache.log4j.LogManager;
@@ -210,15 +209,15 @@ public class PersonalSpaceApplication {
     }
 
     @RequestMapping(value = "/sessions/users", method = RequestMethod.GET, produces = MEDIA_TYPE)
-    public ResponseEntity<String[]> getAllCustomers() {
+    public ResponseEntity<User[]> getAllCustomers() {
         if (session == null) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
 
         // get the customers
-        String[] users = session.getActiveUsers()
-                .keySet()
-                .toArray(new String[session.getActiveUsers()
+        User[] users = session.getActiveUsers()
+                .values()
+                .toArray(new User[session.getActiveUsers()
                         .size()]);
 
         return new ResponseEntity<>(users, HttpStatus.OK);

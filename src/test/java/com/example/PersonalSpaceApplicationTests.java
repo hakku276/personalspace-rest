@@ -1,27 +1,23 @@
 package com.example;
 
-import static org.hamcrest.CoreMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
-import com.example.firebase.Message;
 import com.example.firebase.MessagingService;
 import com.example.personalspace.User;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -345,13 +341,9 @@ public class PersonalSpaceApplicationTests {
                 .toArray(new String[users.size()]);
         assertEquals(1, names.length);
 
-        JSONArray expectedBody = new JSONArray();
-        expectedBody.put(names[0]);
-
         // get the list of users
         mockMvc.perform(get("/sessions/users").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().json(expectedBody.toString()));
+                .andExpect(status().isOk());
     }
 
     @Test
