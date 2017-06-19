@@ -3,9 +3,6 @@ bin/
 .mvn/
 !.mvn/wrapper/maven-wrapper.jar
 
-#cofiguration file
-src/main/resources/config.properties
-
 ### STS ###
 .apt_generated
 .classpath
