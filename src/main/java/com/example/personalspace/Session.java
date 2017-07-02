@@ -60,7 +60,7 @@ public class Session {
 
     public Session() {
         Random rnd = new Random(new Date().getTime());
-        id = rnd.nextLong();
+        id = Math.abs(rnd.nextLong());
         startDate = new Date();
         status = Status.ACTIVE;
         activeUsers = new HashMap<>();

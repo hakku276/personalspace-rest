@@ -93,6 +93,7 @@ public class PersonalSpaceApplication {
         // create a new Session
         if (requestedStatus == Session.Status.ACTIVE) {
             session = new Session();
+            session.setName((String) request.get(SESSION_NAME));
 
             logger.info("New Session Created");
 

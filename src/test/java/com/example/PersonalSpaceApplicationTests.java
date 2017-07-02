@@ -220,6 +220,37 @@ public class PersonalSpaceApplicationTests {
                 .getActiveUsers()
                 .size());
     }
+    
+    @Test
+    public void testAddUserToSessionWithIntDistance() throws Exception {
+        // create the session first
+
+        JSONObject request = new JSONObject();
+        request.put("status", "ACTIVE");
+        request.put("name", "test session");
+        request.put("passkey", config.getSessionPass());
+
+        mockMvc.perform(post("/sessions").contentType(MediaType.APPLICATION_JSON)
+                .content(request.toString()))
+                .andExpect(status().isCreated());
+
+        // add the user to the session
+        JSONObject userRq = new JSONObject();
+        userRq.put("name", "test user");
+        userRq.put("pushToken", "push token");
+        JSONObject pref = new JSONObject();
+        pref.put("distance", 10);
+        userRq.put("pref", pref);
+
+        mockMvc.perform(post("/sessions/users").contentType(MediaType.APPLICATION_JSON)
+                .content(userRq.toString()))
+                .andExpect(status().isOk());
+
+        // assert that the user was added successfully
+        assertEquals(1, controller.getSession()
+                .getActiveUsers()
+                .size());
+    }
 
     @Test
     public void testAddUserWhenSessionClosed() throws Exception {

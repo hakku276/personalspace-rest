@@ -13,6 +13,10 @@ public class Preference {
             throw new IllegalArgumentException("The input map is invalid");
         }
 
-        distance = (double) map.get("distance");
+        if(map.get("distance") instanceof Integer){
+            distance = 1.0 * (int) map.get("distance");
+        } else {
+            distance = (double) map.get("distance");
+        }
     }
 }
