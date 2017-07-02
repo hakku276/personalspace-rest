@@ -224,7 +224,7 @@ public class PersonalSpaceApplication {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/sessions/users/{name}/notify")
+    @RequestMapping(value = "/sessions/users/{name}/notify", method = RequestMethod.POST)
     public ResponseEntity<String> notifyUser(@PathVariable(value = "name") String name,
             @RequestBody Map<String, Object> request) throws JSONException, UnsupportedEncodingException {
 
